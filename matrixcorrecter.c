@@ -60,28 +60,58 @@ int calculate_errors(struct CorrectionalCodes *codes, int error_coordinates[][2]
 	if ((fmod(row_diff, 1) == 0) && (fmod(column_diff, 1) == 0))
 	{
 		printf("\nSingle bit error.\n");
-		if((log2(row_diff) != '-inf')&&(log2(row_diff) != '-nan'))
+		if(row_diff != 0)
 		{
 			error_coordinates[0][0] = log2(row_diff);
 		} else {
 			error_coordinates[0][0] = -1;
 		}
-		if((log2(column_diff) != '-inf')&&(log2(column_diff) != '-nan'))
+		if(column_diff != 0)
 		{ 
-		error_coordinates[0][1] = log2(column_diff); 
+			error_coordinates[0][1] = log2(column_diff); 
 		} else {
-				error_coordinates[0][1] = -1;
+			error_coordinates[0][1] = -1;
 		}
-	}
+	} else {}
 		printf("\nerror coordinates: %d, %d\n", error_coordinates[0][0], error_coordinates[0][1]);
 	return 0;
 }
-void correct_packet(bool data_matrix[][4], int error_coordinates[][2], int number_of_errors)
+void correct_packet(bool data_matrix[][4], struct CorrectionalCodes *codes, int error_coordinates[][2], int number_of_errors)
 {
-	int i;
+	int i, a;
+	int temp[10];
 	for(i=0;i<number_of_errors;i++)
 	{
-		data_matrix[error_coordinates[i][0]][error_coordinates[i][1]] = !data_matrix[error_coordinates[i][0]][error_coordinates[i][1]];
+		if((error_coordinates[i][0] >= 0) && (error_coordinates[i][1] >= 0))
+		{
+			data_matrix[error_coordinates[i][0]][error_coordinates[i][1]] = !data_matrix[error_coordinates[i][0]][error_coordinates[i][1]];
+		} else if ((error_coordinates[i][0] >= 0) && (error_coordinates[i][1] == -1))
+		{
+			for(a=0;a<8;a++)
+			{
+				temp[a] = (codes->RowReceivedCode & (1u << a) ? 1 : 0);
+			}
+			temp[error_coordinates[i][0]] = !temp[error_coordinates[i][0]];
+			codes->RowReceivedCode = 0;
+			for(a=0;a<8;a++)
+			{
+				codes->RowReceivedCode = codes->RowReceivedCode + (temp[a]*power(2,a));
+			}
+			for(a=0;a<8;a++) temp[a] = 0;
+		} else if ((error_coordinates[i][0] == -1) && (error_coordinates[i][1] >= 0))
+		{
+			for(a=0;a<8;a++)
+			{
+				temp[a] = (codes->ColumnReceivedCode & (1u << a) ? 1 : 0);
+			}
+			temp[error_coordinates[i][1]] = !temp[error_coordinates[i][1]];
+			codes->ColumnReceivedCode = 0;
+			for(a=0;a<8;a++)
+			{
+				codes->ColumnReceivedCode = codes->ColumnReceivedCode + (temp[a]*power(2,a));
+			}
+			for(a=0;a<8;a++) temp[a] = 0;
+		}
 	}
 }
 
