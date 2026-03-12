@@ -37,40 +37,36 @@ int main(int argc, char **argv)
 
 		tx_dat[0] = getchar();	
 		tx_dat[1] = getchar();
-
 		build_data_packet(tx_dat);
-		
 		write(serial_port, &tx_dat, 4); //transmit character
 		fflush(stdout);
 		for(i=0;i<4;i++)
 		{
 			read(serial_port, &rx_dat[i], 1); //recieve character
 		}
-
         //inject error
-		int temp[10];
+		int temp[10], temp2[10];
 			for(a=0;a<8;a++)
 			{
-				//temp[a] = (rx_code.RowReceivedCode & (1u << a) ? 1 : 0);
-				temp[a] = (rx_dat[0] & (1u << a) ? 1 : 0);
+				//temp[a] = (rx_dat[0] & (1u << a) ? 1 : 0);
+				temp2[a] = (rx_dat[3] & (1u << a) ? 1 : 0);
 				//printf("%b", temp[a]);
 			}
 			//printf("\n");
-			//rx_code.RowReceivedCode = 0;
-			rx_dat[0] = 0;
-			//temp[1] = !temp[1];
-			temp[2] = !temp[2];
-			temp[5] = !temp[5];
-			temp[6] = !temp[6];
+			//rx_dat[0] = 0;
+			rx_dat[3] = 0;
+			temp2[1] = !temp2[1];
+			//temp[2] = !temp[2];
+			//temp[5] = !temp[5];
+			//temp[6] = !temp[6];
 			//printf("\n");
 			for(a=0;a<8;a++)
 			{
-				//printf("%b\n", rx_code.RowReceivedCode);
 				//printf("%b\n", rx_dat[0]);
-				//rx_code.RowReceivedCode = rx_code.RowReceivedCode + (temp[a]*pow(2,a));
-				rx_dat[0] = rx_dat[0] + (temp[a]*pow(2,a));
+				//rx_dat[0] = rx_dat[0] + (temp[a]*pow(2,a));
+				rx_dat[3] = rx_dat[3] + (temp2[a]*pow(2,a));
 			}
-			printf("\n");
+			//printf("\n");
 			for(a=0;a<8;a++) temp[a] = 0;
 			check_data_packet(rx_dat);
 	}

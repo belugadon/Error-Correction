@@ -22,26 +22,28 @@ int build_data_packet(char data[])
 	
 	data[2] = code.RowCorrectionalCode;
 	data[3] = code.ColumnCorrectionalCode;
-	printf("Row correction code:\n");
-	for(i=0;i<8;i++)
-	{
-		putchar(data[2] & (1u << i) ? '1' : '0');
-	}
-	printf("\n");
+	//printf("Row correction code:\n");
+	//for(i=0;i<8;i++)
+	//{
+	//	putchar(data[2] & (1u << i) ? '1' : '0');
+	//}
+	//printf("\n");
 	if(code.parity){ data[2] = (data[2] | (1u << 7)); }
-	printf("Row correction code w parity:\n");
-	for(i=0;i<8;i++)
-	{
-		putchar(data[2] & (1u << i) ? '1' : '0');
-	}
-	printf("\n");
+	//printf("Row correction code w parity:\n");
+	//for(i=0;i<8;i++)
+	//{
+	//	putchar(data[2] & (1u << i) ? '1' : '0');
+	//}
+	//printf("\n");
 	return 0 ;
 }
 
 int check_data_packet(char data[])
 {
+	int correction_attempt_no = 0;
 	int generator_array[4];
-	int error_coordinates[10][2];
+	int dual_bit_error_coordinates[4][2];
+	int single_bit_error_coordinates[1][2];
 	bool data_matrix[4][4];
 	bool temp_matrix[4][4];
 	struct CorrectionalCodes code;
@@ -51,31 +53,36 @@ int check_data_packet(char data[])
 	capture_correctional_codes(&code, data);
 	//code.RowReceivedCode = data[2];
 	//code.ColumnReceivedCode = data[3];	
-	if (calculate_errors(&code, error_coordinates, generator_array) != 0)
+	calculate_single_bit_errors(&code, single_bit_error_coordinates, generator_array);
+	calculate_dual_bit_errors(&code, dual_bit_error_coordinates, generator_array);
+	code.attempt_no=1;
+	while ((error_check(&code) != 0) && (correction_attempt_no < 4))//(calculate_errors(&code, multi_bit_error_coordinates, generator_array) != 0)
 	{
-		printf("Correction attempt #1:\n	");
-		code.attempt_no=0;
+		printf("Correction attempt #%d:\n	", correction_attempt_no+1);
 		memcpy(temp_matrix, data_matrix,16*sizeof(bool));
-		correct_packet(temp_matrix, &code, error_coordinates);
+		correct_packet(correction_attempt_no, temp_matrix, &code, single_bit_error_coordinates, dual_bit_error_coordinates);
 		calculate_CorrectionalCodes(&code, temp_matrix, generator_array);
-		capture_correctional_codes(&code, data);
-		//code.RowReceivedCode = data[2];
-		//code.ColumnReceivedCode = data[3];	
-		if (error_check(&code) != 0)
+		correction_attempt_no++;
+		//capture_correctional_codes(&code, data);
+		/*if (error_check(&code) != 0)
 		{
-			printf("Attempt #1 failed.\nCorrection attempt #2:\n	");
-			code.attempt_no=1;
+			printf("Attempt #%d failed.\n	", correction_attempt_no);
 			memcpy(temp_matrix, data_matrix,16*sizeof(bool));
-			correct_packet(temp_matrix, &code, error_coordinates);
+			correct_packet(correction_attempt_no, temp_matrix, &code, single_bit_error_coordinates, multi_bit_error_coordinates);
+			code.attempt_no++;
 			calculate_CorrectionalCodes(&code, temp_matrix, generator_array);
-			capture_correctional_codes(&code, data);
-			//code.RowReceivedCode = data[2];
-			//code.ColumnReceivedCode = data[3];	
+			//capture_correctional_codes(&code, data);
 			if (error_check(&code) != 0)
 			{
 				printf("Attempt #2 failed - Aborting message recovery attemts.\n	");
 			} else {printf("Attempt #2 Suceeded\n"); }
-		} else { printf("Attempt #1 Suceeded\n");}
+		} else { printf("Attempt #%d Suceeded\n", correction_attempt_no);}*/
+	}
+	if(error_check(&code) == 0)
+	{
+		printf("Attempt #%d suceeded\n", correction_attempt_no);
+	} else {
+		printf("Attempt #%d failed, Aborting\n", correction_attempt_no);
 	}
 	return 0;
 }
@@ -101,7 +108,10 @@ int calculate_CorrectionalCodes(struct CorrectionalCodes *ECC, bool data_matrix[
 		}
 	}
 	ECC->parity = fmod(temp,2);	
-
+	//printf("\nrow cal: %d", ECC->RowCorrectionalCode);
+	//printf("\nrow rx: %d", ECC->RowReceivedCode);
+	//printf("\ncol cal: %d", ECC->ColumnCorrectionalCode);
+	//printf("\ncol rx: %d", ECC->ColumnReceivedCode);
 	return 0;	
 }
 int capture_correctional_codes(struct CorrectionalCodes *ECC, char rx_data[])
@@ -109,20 +119,20 @@ int capture_correctional_codes(struct CorrectionalCodes *ECC, char rx_data[])
 	int i;
 	ECC->RowReceivedCode = rx_data[2];
 	ECC->ColumnReceivedCode = rx_data[3];
-	printf("Received row correctional code w parity bit:\n");
-	for(i=0;i<8;i++)
-	{
-		putchar(ECC->RowReceivedCode & (1u << i) ? '1' : '0');
-	}
-	printf("\n");
+	//printf("Received row correctional code w parity bit:\n");
+	//for(i=0;i<8;i++)
+	//{
+	//	putchar(ECC->RowReceivedCode & (1u << i) ? '1' : '0');
+	//}
+	//printf("\n");
 	ECC->parity_recieved = (ECC->RowReceivedCode & (1u << 7) ? 1 : 0);
 	ECC->RowReceivedCode = (ECC->RowReceivedCode & ~(1u << 7));
-	printf("Received row correctional code w parity bit parsed:\n");
-	for(i=0;i<8;i++)
-	{
-		putchar(ECC->RowReceivedCode & (1u << i) ? '1' : '0');
-	}
-	printf("\n");
+	//printf("Received row correctional code w parity bit parsed:\n");
+	//for(i=0;i<8;i++)
+	//{
+	//	putchar(ECC->RowReceivedCode & (1u << i) ? '1' : '0');
+	//}
+	//printf("\n");
 		
 	return 0;
 }
@@ -152,11 +162,12 @@ int error_check(struct CorrectionalCodes *ECC)
 	double column_diff = fabs(ECC->ColumnCorrectionalCode - ECC->ColumnReceivedCode);
 	printf("\nrow diff: %f", row_diff);
 	printf("\ncolumn diff: %f", column_diff);
-	printf("\n");
+	//printf("\n");
 	if ((row_diff > 0) || (column_diff > 0))//if ((fmod(row_diff, 1) == 0) && (fmod(column_diff, 1) == 0))
 	{
 		printf("\nError detected.\n");
-		if ((fmod(log2(row_diff), 1) == 0) && (fmod(log2(column_diff), 1) == 0))
+		return 1;
+		/*if ((fmod(log2(row_diff), 1) == 0) && (fmod(log2(column_diff), 1) == 0))
 		{
 			printf("\nSingle bit error.\n");
 			return 1;
@@ -164,18 +175,49 @@ int error_check(struct CorrectionalCodes *ECC)
 		{
 			printf("Multi bit error.\n");
 			return 2;
-		}
+		}*/
 	} else {
 		printf("\nNo errors detected.\n\n");
 		if(ECC->parity == ECC->parity_recieved){
 			return 0;
 		} else { 
 			printf("\nParity Check failed.\n\n");
-			return 3;
+			return 2;
 		}
 	}
 }
-int calculate_errors(struct CorrectionalCodes *ECC, int error_coordinates[][2], int generator_array[])
+int calculate_single_bit_errors(struct CorrectionalCodes *ECC, int error_coordinates[][2], int generator_array[])
+{	
+	//printf("\nrow cal: %d", ECC->RowCorrectionalCode);
+	//printf("\nrow rx: %d", ECC->RowReceivedCode);
+	//printf("\ncol cal: %d", ECC->ColumnCorrectionalCode);
+	//printf("\ncol rx: %d", ECC->ColumnReceivedCode);
+	double row_diff = fabs(ECC->RowCorrectionalCode - ECC->RowReceivedCode);
+	double column_diff = fabs(ECC->ColumnCorrectionalCode - ECC->ColumnReceivedCode);
+	//printf("\nrow diff: %f", row_diff);
+	//printf("\ncolumn diff: %f", column_diff);
+	//printf("\n");
+		//printf("\nError detected.\n");
+	printf("\nSingle bit error possibilities,\n");
+	if(row_diff != 0)
+	{
+		error_coordinates[0][0] = log2(row_diff);
+	} else {
+		error_coordinates[0][0] = -1;
+	}
+	if(column_diff != 0)
+	{ 
+		error_coordinates[0][1] = log2(column_diff); 
+	} else {
+		error_coordinates[0][1] = -1;
+	}
+	ECC->no_of_errors = 1;
+	printf("coordinates:\n%d, %d\n", error_coordinates[0][0], error_coordinates[0][1]);
+			
+	return 0;
+
+}
+int calculate_dual_bit_errors(struct CorrectionalCodes *ECC, int error_coordinates[][2], int generator_array[])
 {
 	int temp1[10];
 	int temp2[10];
@@ -191,112 +233,89 @@ int calculate_errors(struct CorrectionalCodes *ECC, int error_coordinates[][2], 
 	//printf("\ncol rx: %d", ECC->ColumnReceivedCode);
 	double row_diff = fabs(ECC->RowCorrectionalCode - ECC->RowReceivedCode);
 	double column_diff = fabs(ECC->ColumnCorrectionalCode - ECC->ColumnReceivedCode);
+	
+	if ((fmod(log2(column_diff),1) != 0) && (fmod(log2(row_diff),1) == 0))
+	{
+		row_diff = row_diff/2;
+	}
+	if ((fmod(log2(row_diff),1) != 0) && (fmod(log2(column_diff),1) == 0))
+	{
+		column_diff = column_diff/2;
+	}
 	//printf("\nrow diff: %f", row_diff);
 	//printf("\ncolumn diff: %f", column_diff);
 	//printf("\n");
-	if ((row_diff > 0) || (column_diff > 0))//if ((fmod(row_diff, 1) == 0) && (fmod(column_diff, 1) == 0))
+	printf("dual bit error possibilities.\n");
+	//row
+	for (i=0;i<10;i++)
 	{
-		//printf("\nError detected.\n");
-		if ((fmod(log2(row_diff), 1) == 0) && (fmod(log2(column_diff), 1) == 0))
-		{
-			printf("\nSingle bit error.\n");
-			if(row_diff != 0)
-			{
-				error_coordinates[0][0] = log2(row_diff);
-			} else {
-				error_coordinates[0][0] = -1;
-			}
-			if(column_diff != 0)
-			{ 
-				error_coordinates[0][1] = log2(column_diff); 
-			} else {
-				error_coordinates[0][1] = -1;
-			}
-			ECC->no_of_errors = 1;
-			printf("Error coordinates:\n%d, %d\n", error_coordinates[0][0], error_coordinates[0][1]);
-			return 1;
-		} else 
-		{
-			printf("Multi bit error.\n");
-			//row
-			for (i=0;i<10;i++)
-			{
-				temp1[i] = 0;
-				temp2[i] = 0;
-			}
+		temp1[i] = 0;
+		temp2[i] = 0;
+	}
 				
-			for (i=0;i<4;i++)
-			{
-				//printf("row diff: %f, gen array: %d\n", row_diff, generator_array[i]);
-				if(row_diff >= generator_array[i])
-				{
-					temp1[i] = 1;
-				}else {temp1[i] = 0;}
-			}	
-			for (i=0;i<4;i++)
-			{
-				if(fmod(row_diff,generator_array[i])==0)
-				{
-					temp2[i] = 1;
-				}else {temp2[i] = 0;}
-			}	
-			for (i=0;i<4;i++)
-			{
-				row1 = row1 + temp1[i];
-				row2 = row2 + temp2[i];
-			}
-			error_coordinates[0][0] = row1 - 1;
-			error_coordinates[1][0] = row2 - 1;
-			error_coordinates[2][0] = row2 - 1;
-			error_coordinates[3][0] = row1 - 1;
-			ECC->no_of_errors = 2;
-			//column
-			for (i=0;i<10;i++)
-			{
-				temp1[i] = 0;
-				temp2[i] = 0;
-			}		
-			for (i=0;i<4;i++)
-			{
-				if(column_diff >= generator_array[i])
-				{
-					temp1[i] = 1;
-				}else {temp1[i] = 0;}
-			}	
-			for (i=0;i<4;i++)
-			{
-				if(fmod(column_diff,generator_array[i])==0)
-				{
-					temp2[i] = 1;
-				}else {temp2[i] = 0;}
-			}	
-			for (i=0;i<4;i++)
-			{
-				col1 = col1 + temp1[i];
-				col2 = col2 + temp2[i];
-			}
-			error_coordinates[0][1] = col1 - 1;
-			error_coordinates[1][1] = col2 - 1;
-			error_coordinates[2][1] = col1 - 1;
-			error_coordinates[3][1] = col2 - 1;
-			ECC->no_of_errors = 2;
-			printf("Error coordinates\nGuess#1:\n");			
-			printf("%d, %d\n", error_coordinates[0][0], error_coordinates[0][1]);
-			printf("%d, %d\n", error_coordinates[1][0], error_coordinates[1][1]);
-			printf("Guess#2:\n");			
-			printf("%d, %d\n", error_coordinates[2][0], error_coordinates[2][1]);
-			printf("%d, %d\n\n", error_coordinates[3][0], error_coordinates[3][1]);
-			return 2;
-		}
-	} else {
-		printf("\nNo errors detected.\n\n");
-		if(ECC->parity == ECC->parity_recieved){
-			return 0;
-		} else { 
-			printf("\nParity Check failed.\n\n");
-			return 3;
-		}
-		}
+	for (i=0;i<4;i++)
+	{
+		//printf("row diff: %f, gen array: %d\n", row_diff, generator_array[i]);
+		if(row_diff >= generator_array[i])
+		{
+			temp1[i] = 1;
+		}else {temp1[i] = 0;}
+	}	
+	for (i=0;i<4;i++)
+	{
+		if(fmod(row_diff,generator_array[i])==0)
+		{
+			temp2[i] = 1;
+		}else {temp2[i] = 0;}
+	}	
+	for (i=0;i<4;i++)
+	{
+		row1 = row1 + temp1[i];
+		row2 = row2 + temp2[i];
+	}
+	error_coordinates[0][0] = row1 - 1;
+	error_coordinates[1][0] = row2 - 1;
+	error_coordinates[2][0] = row2 - 1;
+	error_coordinates[3][0] = row1 - 1;
+	ECC->no_of_errors = 2;
+	//column
+	for (i=0;i<10;i++)
+	{
+		temp1[i] = 0;
+		temp2[i] = 0;
+	}		
+	for (i=0;i<4;i++)
+	{
+		if(column_diff >= generator_array[i])
+		{
+			temp1[i] = 1;
+		}else {temp1[i] = 0;}
+	}	
+	for (i=0;i<4;i++)
+	{
+		if(fmod(column_diff,generator_array[i])==0)
+		{
+			temp2[i] = 1;
+		}else {temp2[i] = 0;}
+	}	
+	for (i=0;i<4;i++)
+	{
+		col1 = col1 + temp1[i];
+		col2 = col2 + temp2[i];
+	}
+	error_coordinates[0][1] = col1 - 1;
+	error_coordinates[1][1] = col2 - 1;
+	error_coordinates[2][1] = col1 - 1;
+	error_coordinates[3][1] = col2 - 1;
+	ECC->no_of_errors = 2;
+	printf("Error coordinates\nGuess#1:\n");			
+	printf("%d, %d\n", error_coordinates[0][0], error_coordinates[0][1]);
+	printf("%d, %d\n", error_coordinates[1][0], error_coordinates[1][1]);
+	printf("Guess#2:\n");			
+	printf("%d, %d\n", error_coordinates[2][0], error_coordinates[2][1]);
+	printf("%d, %d\n", error_coordinates[3][0], error_coordinates[3][1]);
+	
+	return 0;
 }
 int calculate_burst_errors(struct CorrectionalCodes *ECC, struct burst_errors *burst, int generator_array[])
 {
@@ -330,41 +349,94 @@ int calculate_burst_errors(struct CorrectionalCodes *ECC, struct burst_errors *b
 	}
 	return 0;
 }
-void correct_packet(bool data_matrix[][4], struct CorrectionalCodes *ECC, int error_coordinates[][2])
+void correct_packet(int attempt_no, bool data_matrix[][4], struct CorrectionalCodes *ECC, int single_error_coordinates[][2], int dual_error_coordinates[][2])
 {
-	int i, a;
+	int i, a, b;
 	int temp[10];
-	for(i=0;i<ECC->no_of_errors;i++)
-	{
-		if((error_coordinates[i+ECC->attempt_no*2][0] >= 0) && (error_coordinates[i+ECC->attempt_no*2][1] >= 0))
+	if (attempt_no == 0){
+		if (single_error_coordinates[0][0] == -1)
 		{
-			data_matrix[error_coordinates[i+ECC->attempt_no*2][0]][error_coordinates[i+ECC->attempt_no*2][1]] = !data_matrix[error_coordinates[i+ECC->attempt_no*2][0]][error_coordinates[i+ECC->attempt_no*2][1]];
-		} else if ((error_coordinates[i][0] >= 0) && (error_coordinates[i][1] == -1))
-		{
-			for(a=0;a<8;a++)
+			for (i=0;i<8;i++)
 			{
-				temp[a] = (ECC->RowReceivedCode & (1u << a) ? 1 : 0);
+				temp[i] = (ECC->ColumnReceivedCode & (1u << i) ? 1 : 0);
 			}
-			temp[error_coordinates[i][0]] = !temp[error_coordinates[i][0]];
-			ECC->RowReceivedCode = 0;
-			for(a=0;a<8;a++)
-			{
-				ECC->RowReceivedCode = ECC->RowReceivedCode + (temp[a]*power(2,a));
-			}
-			for(a=0;a<8;a++) temp[a] = 0;
-		} else if ((error_coordinates[i][0] == -1) && (error_coordinates[i][1] >= 0))
-		{
-			for(a=0;a<8;a++)
-			{
-				temp[a] = (ECC->ColumnReceivedCode & (1u << a) ? 1 : 0);
-			}
-			temp[error_coordinates[i][1]] = !temp[error_coordinates[i][1]];
 			ECC->ColumnReceivedCode = 0;
-			for(a=0;a<8;a++)
+			temp[single_error_coordinates[0][1]] = !temp[single_error_coordinates[0][1]];
+			for (i=0;i<8;i++)
 			{
-				ECC->ColumnReceivedCode = ECC->ColumnReceivedCode + (temp[a]*power(2,a));
+				ECC->ColumnReceivedCode = ECC->ColumnReceivedCode + (temp[i]*pow(2,i));
 			}
-			for(a=0;a<8;a++) temp[a] = 0;
+		} else if (single_error_coordinates[0][1] == -1)
+		{
+			printf("Received row correctional code:\n");
+			for(i=0;i<8;i++)
+			{
+				putchar(ECC->RowReceivedCode & (1u << i) ? '1' : '0');
+			}
+			printf("\n");
+			for (i=0;i<8;i++)
+			{
+				temp[i] = (ECC->RowReceivedCode & (1u << i) ? 1 : 0);
+			}
+			printf("temp buffer:\n");
+			for(i=0;i<8;i++)
+			{
+				putchar(temp[i]+48);
+			}
+			printf("\n");
+			ECC->RowReceivedCode = 0;
+			temp[single_error_coordinates[0][0]] = !temp[single_error_coordinates[0][0]];
+			printf("temp buffer corrected:\n");
+			for(i=0;i<8;i++)
+			{
+				putchar(temp[i]+48);
+			}
+			printf("\n");
+			for (i=0;i<8;i++)
+			{
+				ECC->RowReceivedCode = ECC->RowReceivedCode + (temp[i]*pow(2,i));
+			}
+			printf("Received row correctional code corrected:\n");
+			for(i=0;i<8;i++)
+			{
+				putchar(ECC->RowReceivedCode & (1u << i) ? '1' : '0');
+			}
+			printf("\n");
+		} else {
+		data_matrix[single_error_coordinates[0][0]][single_error_coordinates[0][1]] = !data_matrix[single_error_coordinates[0][0]][single_error_coordinates[0][1]];
+		}
+	} else {
+		for(i=0;i<ECC->no_of_errors;i++)
+		{
+			if ((dual_error_coordinates[i][0] >= 0) && (dual_error_coordinates[i][1] == -1))
+			{
+				for(a=0;a<8;a++)
+				{
+					temp[a] = (ECC->RowReceivedCode & (1u << a) ? 1 : 0);
+				}
+				temp[dual_error_coordinates[i][0]] = !temp[dual_error_coordinates[i][0]];
+				ECC->RowReceivedCode = 0;
+				for(a=0;a<8;a++)
+				{
+					ECC->RowReceivedCode = ECC->RowReceivedCode + (temp[a]*power(2,a));
+				}
+				for(a=0;a<8;a++) temp[a] = 0;
+			} else if ((dual_error_coordinates[i][0] == -1) && (dual_error_coordinates[i][1] >= 0))
+			{
+				for(a=0;a<8;a++)
+				{
+					temp[a] = (ECC->ColumnReceivedCode & (1u << a) ? 1 : 0);
+				}
+				temp[dual_error_coordinates[i][1]] = !temp[dual_error_coordinates[i][1]];
+				ECC->ColumnReceivedCode = 0;
+				for(a=0;a<8;a++)
+				{
+					ECC->ColumnReceivedCode = ECC->ColumnReceivedCode + (temp[a]*power(2,a));
+				}
+				for(a=0;a<8;a++) temp[a] = 0;
+			} else {
+				data_matrix[dual_error_coordinates[i+(attempt_no*2)][0]][dual_error_coordinates[i+(attempt_no*2)][1]] = !data_matrix[dual_error_coordinates[i+(attempt_no*2)][0]][dual_error_coordinates[i+(attempt_no*2)][1]];
+			}
 		}
 	}
 }
