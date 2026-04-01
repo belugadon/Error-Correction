@@ -29,7 +29,8 @@ void build_Matrices(char data[], bool data_matrix[][4], int generator_array[]);
 int calculate_single_bit_errors(struct CorrectionalCodes *ECC, int error_coordinates[][2], int generator_array[]);
 int calculate_dual_bit_errors(struct CorrectionalCodes *ECC, int error_coordinates[][2], int generator_array[]);
 int calculate_burst_errors(struct CorrectionalCodes *ECC, struct burst_errors *burst, int generator_array[]);
-void correct_packet(int attempt_no, bool data_matrix[][4], struct CorrectionalCodes *ECC, int single_error_coordinates[][2], int multi_error_coordinates[][2]);
+void correct_packet(int attempt_no, bool matrix[][4], struct CorrectionalCodes *ECC, int single_error_coordinates[][2], int multi_error_coordinates[][2], struct burst_errors *burst);
+int repackage_data(char data[], bool data_matrix[][4]);
 int power(int base, int exponent);
 
 

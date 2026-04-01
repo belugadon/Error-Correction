@@ -48,27 +48,31 @@ int main(int argc, char **argv)
 		int temp[10], temp2[10];
 			for(a=0;a<8;a++)
 			{
-				//temp[a] = (rx_dat[0] & (1u << a) ? 1 : 0);
-				temp2[a] = (rx_dat[3] & (1u << a) ? 1 : 0);
+				temp[a] = (rx_dat[1] & (1u << a) ? 1 : 0);
+				//temp2[a] = (rx_dat[3] & (1u << a) ? 1 : 0);
 				//printf("%b", temp[a]);
 			}
 			//printf("\n");
-			//rx_dat[0] = 0;
-			rx_dat[3] = 0;
-			temp2[1] = !temp2[1];
-			//temp[2] = !temp[2];
+			rx_dat[1] = 0;
+			//rx_dat[3] = 0;
+			//temp2[3] = !temp2[3];
 			//temp[5] = !temp[5];
-			//temp[6] = !temp[6];
+			//temp[2] = !temp[2];
+			temp[0] = !temp[0];
+			temp[1] = !temp[1];
+			temp[2] = !temp[2];
+			temp[3] = !temp[3];
 			//printf("\n");
 			for(a=0;a<8;a++)
 			{
 				//printf("%b\n", rx_dat[0]);
-				//rx_dat[0] = rx_dat[0] + (temp[a]*pow(2,a));
-				rx_dat[3] = rx_dat[3] + (temp2[a]*pow(2,a));
+				rx_dat[1] = rx_dat[1] + (temp[a]*pow(2,a));
+				//rx_dat[3] = rx_dat[3] + (temp2[a]*pow(2,a));
 			}
 			//printf("\n");
 			for(a=0;a<8;a++) temp[a] = 0;
 			check_data_packet(rx_dat);
+			printf("\n%c%c\n", rx_dat[0], rx_dat[1]);
 	}
 	return 0;
 }
