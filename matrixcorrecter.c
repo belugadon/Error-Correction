@@ -316,10 +316,10 @@ int calculate_dual_bit_errors(struct CorrectionalCodes *ECC, int error_coordinat
 		row1 = row1 + temp1[i];
 		row2 = row2 + temp2[i];
 	}
-	error_coordinates[0][0] = row1 - 1;
-	error_coordinates[1][0] = row2 - 1;
-	error_coordinates[2][0] = row2 - 1;
-	error_coordinates[3][0] = row1 - 1;
+	if((fmod(row_diff,1)>=0)&&(fmod(column_diff,1)>=0)){error_coordinates[0][0] = row1 - 1;} else {error_coordinates[0][0] = -1;}
+	if((fmod(row_diff,1)!=0)||(fmod(column_diff,1)!=0)){error_coordinates[1][0] = row2 - 1;} else {error_coordinates[1][0] = -1;}
+	if((fmod(row_diff,1)!=0)||(fmod(column_diff,1)!=0)){error_coordinates[2][0] = row2 - 1;} else {error_coordinates[2][0] = -1;}
+	if((fmod(row_diff,1)!=0)||(fmod(column_diff,1)!=0)){error_coordinates[3][0] = row1 - 1;} else {error_coordinates[3][0] = -1;}
 	ECC->no_of_errors = 2;
 	//column
 	for (i=0;i<10;i++)
@@ -346,10 +346,10 @@ int calculate_dual_bit_errors(struct CorrectionalCodes *ECC, int error_coordinat
 		col1 = col1 + temp1[i];
 		col2 = col2 + temp2[i];
 	}
-	error_coordinates[0][1] = col1 - 1;
-	error_coordinates[1][1] = col2 - 1;
-	error_coordinates[2][1] = col1 - 1;
-	error_coordinates[3][1] = col2 - 1;
+	if((fmod(row_diff,1)!=0)||(fmod(column_diff,1)!=0)){error_coordinates[0][1] = col1 - 1;} else {error_coordinates[0][1] = -1;}
+	if((fmod(row_diff,1)>=0)&&(fmod(column_diff,1)>=0)){error_coordinates[1][1] = col2 - 1;} else {error_coordinates[1][1] = -1;}
+	if((fmod(row_diff,1)!=0)||(fmod(column_diff,1)!=0)){error_coordinates[2][1] = col1 - 1;} else {error_coordinates[2][1] = -1;}
+	if((fmod(row_diff,1)!=0)||(fmod(column_diff,1)!=0)){error_coordinates[3][1] = col2 - 1;} else {error_coordinates[3][1] = -1;}
 	ECC->no_of_errors = 2;
 	printf("Error coordinates\nGuess#1:\n");			
 	printf("%d, %d\n", error_coordinates[0][0], error_coordinates[0][1]);
@@ -521,7 +521,7 @@ void correct_packet(int attempt_no, bool matrix[][4], struct CorrectionalCodes *
 			}
 		}
 	} else if ((attempt_no == 1) || (attempt_no == 2)) {
-		/*for(i=0;i<ECC->no_of_errors;i++)
+		for(i=0;i<ECC->no_of_errors;i++)
 		{
 			if ((dual_error_coordinates[i][0] >= 0) && (dual_error_coordinates[i][1] == -1))
 			{
@@ -549,7 +549,7 @@ void correct_packet(int attempt_no, bool matrix[][4], struct CorrectionalCodes *
 					ECC->ColumnReceivedCode = ECC->ColumnReceivedCode + (temp[a]*power(2,a));
 				}
 				for(a=0;a<8;a++) temp[a] = 0;
-			} else {*/
+			} else {
 			if (attempt_no == 1){
 				if (((single_error_coordinates[0][0] < row_dim) && (single_error_coordinates[0][1] < col_dim)) && ((single_error_coordinates[1][0] < row_dim) && (single_error_coordinates[1][1] < col_dim)))
 				{
@@ -563,8 +563,8 @@ void correct_packet(int attempt_no, bool matrix[][4], struct CorrectionalCodes *
 					matrix[dual_error_coordinates[3][0]][dual_error_coordinates[3][1]] = !matrix[dual_error_coordinates[3][0]][dual_error_coordinates[3][1]];
 				}	
 			}
-			//}
-		//}
+		  }
+		}
 	} else {
 		if (burst->length <= row_dim)
 		{
