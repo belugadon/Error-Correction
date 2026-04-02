@@ -78,9 +78,9 @@ int check_data_packet(char data[])
 	calculate_dual_bit_errors(&code, dual_bit_error_coordinates, generator_array);
 	calculate_burst_errors(&code, &row_burst, generator_array);
 	code.attempt_no=1;
-	while ((error_check(&code) != 0) && (correction_attempt_no < 4))//(calculate_errors(&code, multi_bit_error_coordinates, generator_array) != 0)
+	while ((error_check(&code) != 0) && (correction_attempt_no < 5))//(calculate_errors(&code, multi_bit_error_coordinates, generator_array) != 0)
 	{
-		printf("Correction attempt #%d:\n	", correction_attempt_no+1);
+		//printf("Correction attempt #%d:\n	", correction_attempt_no+1);
 		memcpy(temp_matrix, data_matrix,16*sizeof(bool));
 		/*printf("\n\r");
 		for(i=0;i<4;i++)
@@ -371,7 +371,7 @@ int calculate_burst_errors(struct CorrectionalCodes *ECC, struct burst_errors *b
 	double row_diff = fabs(ECC->RowCorrectionalCode - ECC->RowReceivedCode);
 	double column_diff = fabs(ECC->ColumnCorrectionalCode - ECC->ColumnReceivedCode);
 
-	burst->highest_line = 0;
+	burst->row_highest_line = 0;
 	if ((row_diff > 0) || (column_diff > 0))
 	{
 		for(i=0;i<8;i++)
@@ -385,9 +385,9 @@ int calculate_burst_errors(struct CorrectionalCodes *ECC, struct burst_errors *b
 		}
 		for(i=0;i<8;i++)
 		{
-			burst->highest_line = burst->highest_line + temp1[i];
+			burst->row_highest_line = burst->row_highest_line + temp1[i];
 		}
-		burst->highest_line = burst->highest_line - 1;
+		burst->row_highest_line = burst->row_highest_line - 1;
 		//printf("\nrow diff: %f", row_diff);
 	    //printf("\ncolumn diff: %f", column_diff);
 		for (i=0;i<8;i++)
@@ -418,14 +418,14 @@ int calculate_burst_errors(struct CorrectionalCodes *ECC, struct burst_errors *b
 		{
 			if (temp5[i] == column_diff)
 			{
-				burst->length = temp4[i];//burst->length + 1;
+				burst->row_length = temp4[i];//burst->length + 1;
 				break;
 			}
 		}
 		if (row_diff == 0)
 		{
-		burst->line_no = -1;
-		} else {burst->line_no = log2(row_diff/burst->length);}
+		burst->row_line_no = -1;
+		} else {burst->row_line_no = log2(row_diff/burst->row_length);}
 		/*printf("\n");
 		for(i=0;i<8;i++)
 		{
@@ -453,10 +453,104 @@ int calculate_burst_errors(struct CorrectionalCodes *ECC, struct burst_errors *b
 		}
 		printf("\n");*/
 	}
-	printf("burst length: %d\n", burst->length);
-	printf("in row: %d\n", burst->line_no);
-	printf("to column: %d\n", burst->highest_line);
-	
+	printf("row burst length: %d\n", burst->row_length);
+	printf("in row: %d\n", burst->row_line_no);
+	printf("to column: %d\n", burst->row_highest_line);
+
+	for(i=0;i<10;i++)
+	{
+		temp1[i] = 0;
+		temp2[i] = 0;
+		temp3[i] = 0;
+		temp4[i] = 0;
+		temp5[i] = 0;
+	}
+	burst->col_highest_line = 0;
+	if ((row_diff > 0) || (column_diff > 0))
+	{
+		for(i=0;i<8;i++)
+		{
+			temp5[i] = 0;
+			if((log2(row_diff)-i)>0)
+			{
+				temp1[i] = 1;
+			}else {temp1[i] = 0;}
+			temp2[i] = pow(2,i);
+		}
+		for(i=0;i<8;i++)
+		{
+			burst->col_highest_line = burst->col_highest_line + temp1[i];
+		}
+		burst->col_highest_line = burst->col_highest_line - 1;
+		//printf("\nrow diff: %f", row_diff);
+	    //printf("\ncolumn diff: %f", column_diff);
+		for (i=0;i<8;i++)
+		{
+			temp3[i] = column_diff/temp2[i];
+			if(fmod((column_diff/temp2[i]),1)==0)
+			{
+				temp3[i] = temp3[i];
+				
+			}else{temp3[i] = 0;}
+			temp4[i] = temp3[i];
+		}
+		for (i=0;i<8;i++)
+		{
+			for (a=7;a>=0;a--)
+			{
+				if(temp1[a]==1)
+				{
+					temp3[i] = temp3[i] - 1;
+					if (temp3[i]>=0)
+					{
+						temp5[i] = temp5[i] + temp2[a];
+					}
+				} else {}
+			}			
+		}
+		for (i=7;i>=0;i--)
+		{
+			if (temp5[i] == row_diff)
+			{
+				burst->col_length = temp4[i];//burst->length + 1;
+				break;
+			}
+		}
+		if (column_diff == 0)
+		{
+		burst->col_line_no = -1;
+		} else {burst->col_line_no = log2(column_diff/burst->col_length);}
+		/*printf("\n");
+		for(i=0;i<8;i++)
+		{
+			printf("%d,", temp1[i]);
+		}
+		printf("\n");
+		for(i=0;i<8;i++)
+		{
+			printf("%d,", temp2[i]);
+		}
+		printf("\n");
+		for(i=0;i<8;i++)
+		{
+			printf("%f,", temp3[i]);
+		}
+		printf("\n");
+		for(i=0;i<8;i++)
+		{
+			printf("%d,", temp4[i]);
+		}
+		printf("\n");
+				for(i=0;i<8;i++)
+		{
+			printf("%d,", temp5[i]);
+		}
+		printf("\n");*/
+	}
+	printf("column burst length: %d\n", burst->col_length);
+	printf("in column: %d\n", burst->col_line_no);
+	printf("to row: %d\n", burst->col_highest_line);
+		
 	return 0;
 }
 void correct_packet(int attempt_no, bool matrix[][4], struct CorrectionalCodes *ECC, int single_error_coordinates[][2], int dual_error_coordinates[][2], struct burst_errors *burst)
@@ -466,6 +560,7 @@ void correct_packet(int attempt_no, bool matrix[][4], struct CorrectionalCodes *
 	int row_dim = 4;
 	int col_dim = 4;
 	if (attempt_no == 0){
+		printf("Attempting single bit correction:\n");
 		if (single_error_coordinates[0][0] == -1)
 		{
 			for (i=0;i<8;i++)
@@ -521,6 +616,8 @@ void correct_packet(int attempt_no, bool matrix[][4], struct CorrectionalCodes *
 			}
 		}
 	} else if ((attempt_no == 1) || (attempt_no == 2)) {
+		if(attempt_no == 1) { printf("Attempting dual bit correction #1:\n");}
+		if(attempt_no == 2) { printf("Attempting dual bit correction #2:\n");}
 		for(i=0;i<ECC->no_of_errors;i++)
 		{
 			if ((dual_error_coordinates[i][0] >= 0) && (dual_error_coordinates[i][1] == -1))
@@ -565,13 +662,24 @@ void correct_packet(int attempt_no, bool matrix[][4], struct CorrectionalCodes *
 			}
 		  }
 		}
-	} else {
-		if (burst->length <= row_dim)
+	} else if (attempt_no == 3){
+		printf("Attempting row burst error correction:\n");
+		if (burst->row_length <= row_dim)
 		{
-			for(i=(burst->length-1);i>=0;i--)
+			for(i=(burst->row_length-1);i>=0;i--)
 			{
 				//printf("%d,",i);
-				matrix[burst->line_no][burst->highest_line-i] = !matrix[burst->line_no][burst->highest_line-i];
+				matrix[burst->row_line_no][burst->row_highest_line-i] = !matrix[burst->row_line_no][burst->row_highest_line-i];
+			}
+		}
+	} else if (attempt_no == 4) {
+		printf("Attempting column burst error correction:\n");
+		if (burst->col_length <= col_dim)
+		{
+			for(i=(burst->col_length-1);i>=0;i--)
+			{
+				//printf("%d,",i);
+				matrix[burst->col_highest_line-i][burst->col_line_no] = !matrix[burst->col_highest_line-i][burst->col_line_no];
 			}
 		}
 	}

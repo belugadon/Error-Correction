@@ -13,9 +13,12 @@ struct CorrectionalCodes {
 };
 
 struct burst_errors {
-	int length;
-	int line_no;
-	int highest_line;
+	int row_length;
+	int row_line_no;
+	int row_highest_line;
+	int col_length;
+	int col_line_no;
+	int col_highest_line;
 };
 
 typedef struct CorrectionalCodes *ECC;
